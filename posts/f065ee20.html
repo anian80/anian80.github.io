@@ -1,0 +1,216 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>CSRF漏洞复现 | Anian'Blog</title><meta name="author" content="追马"><meta name="copyright" content="追马"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="一. CSRF漏洞简介01.CSRF漏洞形成原因开发源码时候，未对相关页面进行token和referer判断，hacker可以构造自己的url地址欺骗用户进行点击。 02.CSRF漏洞攻击分类🔴站内攻击 🔵站外攻击 03.CSRF检测方法☕Burp 抓包检测 ☕SRFTester检查工具 04.如何挖掘CSRF漏洞⚙漏洞扫描工具 📑修改密码的相关页面 📑添加用户的相关页面 📊数据库备份的">
+<meta property="og:type" content="article">
+<meta property="og:title" content="CSRF漏洞复现">
+<meta property="og:url" content="https://anian80.github.io/posts/f065ee20.html">
+<meta property="og:site_name" content="Anian&#39;Blog">
+<meta property="og:description" content="一. CSRF漏洞简介01.CSRF漏洞形成原因开发源码时候，未对相关页面进行token和referer判断，hacker可以构造自己的url地址欺骗用户进行点击。 02.CSRF漏洞攻击分类🔴站内攻击 🔵站外攻击 03.CSRF检测方法☕Burp 抓包检测 ☕SRFTester检查工具 04.如何挖掘CSRF漏洞⚙漏洞扫描工具 📑修改密码的相关页面 📑添加用户的相关页面 📊数据库备份的">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://unpkg.com/anian80blogimage@latest/img/1695196480752.webp">
+<meta property="article:published_time" content="2023-09-20T13:45:51.000Z">
+<meta property="article:modified_time" content="2023-09-20T08:05:32.642Z">
+<meta property="article:author" content="追马">
+<meta property="article:tag" content="CSRF漏洞">
+<meta property="article:tag" content="漏洞复现">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://unpkg.com/anian80blogimage@latest/img/1695196480752.webp"><link rel="shortcut icon" href="https://testingcf.jsdelivr.net/gh/anian80/blogimage//blog/202308301148082.png"><link rel="canonical" href="https://anian80.github.io/posts/f065ee20.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="stylesheet" href="/css/index.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css" media="print" onload="this.media='all'"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/ui/dist/fancybox/fancybox.min.css" media="print" onload="this.media='all'"><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  noticeOutdate: undefined,
+  highlight: {"plugin":"highlighjs","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false},
+  copy: {
+    success: '复制成功',
+    error: '复制错误',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: true,
+    post: false
+  },
+  runtime: '天',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'fancybox',
+  Snackbar: undefined,
+  source: {
+    justifiedGallery: {
+      js: 'https://cdn.jsdelivr.net/npm/flickr-justified-gallery/dist/fjGallery.min.js',
+      css: 'https://cdn.jsdelivr.net/npm/flickr-justified-gallery/dist/fjGallery.min.css'
+    }
+  },
+  isPhotoFigcaption: false,
+  islazyload: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'CSRF漏洞复现',
+  isPost: true,
+  isHome: false,
+  isHighlightShrink: false,
+  isToc: true,
+  postUpdate: '2023-09-20 16:05:32'
+}</script><noscript><style type="text/css">
+  #nav {
+    opacity: 1
+  }
+  .justified-gallery img {
+    opacity: 1
+  }
+
+  #recent-posts time,
+  #post-meta time {
+    display: inline !important
+  }
+</style></noscript><script>(win=>{
+    win.saveToLocal = {
+      set: function setWithExpiry(key, value, ttl) {
+        if (ttl === 0) return
+        const now = new Date()
+        const expiryDay = ttl * 86400000
+        const item = {
+          value: value,
+          expiry: now.getTime() + expiryDay,
+        }
+        localStorage.setItem(key, JSON.stringify(item))
+      },
+
+      get: function getWithExpiry(key) {
+        const itemStr = localStorage.getItem(key)
+
+        if (!itemStr) {
+          return undefined
+        }
+        const item = JSON.parse(itemStr)
+        const now = new Date()
+
+        if (now.getTime() > item.expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return item.value
+      }
+    }
+  
+    win.getScript = url => new Promise((resolve, reject) => {
+      const script = document.createElement('script')
+      script.src = url
+      script.async = true
+      script.onerror = reject
+      script.onload = script.onreadystatechange = function() {
+        const loadState = this.readyState
+        if (loadState && loadState !== 'loaded' && loadState !== 'complete') return
+        script.onload = script.onreadystatechange = null
+        resolve()
+      }
+      document.head.appendChild(script)
+    })
+  
+    win.getCSS = (url,id = false) => new Promise((resolve, reject) => {
+      const link = document.createElement('link')
+      link.rel = 'stylesheet'
+      link.href = url
+      if (id) link.id = id
+      link.onerror = reject
+      link.onload = link.onreadystatechange = function() {
+        const loadState = this.readyState
+        if (loadState && loadState !== 'loaded' && loadState !== 'complete') return
+        link.onload = link.onreadystatechange = null
+        resolve()
+      }
+      document.head.appendChild(link)
+    })
+  
+      win.activateDarkMode = function () {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      win.activateLightMode = function () {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+      const t = saveToLocal.get('theme')
+    
+          const now = new Date()
+          const hour = now.getHours()
+          const isNight = hour <= 8 || hour >= 18
+          if (t === undefined) isNight ? activateDarkMode() : activateLightMode()
+          else if (t === 'light') activateLightMode()
+          else activateDarkMode()
+        
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        if (asideStatus === 'hide') {
+          document.documentElement.classList.add('hide-aside')
+        } else {
+          document.documentElement.classList.remove('hide-aside')
+        }
+      }
+    
+    const detectApple = () => {
+      if(/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)){
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+    })(window)</script><link rel="stylesheet" href="/css/custom.css"  media="defer" onload="this.media='all'"><meta name="generator" content="Hexo 6.3.0"></head><body><div id="loading-box" onclick="document.getElementById(&quot;loading-box&quot;).classList.add(&quot;loaded&quot;)"><div class="loading-bg"><img class="loading-img nolazyload" alt="加载头像" src="https://unpkg.com/anian80blogimage@latest/img/1693469407141.webp"/><div class="loading-image-dot"></div></div></div><script>const preloader = {
+  endLoading: () => {
+    document.getElementById('loading-box').classList.add("loaded");
+  },
+  initLoading: () => {
+    document.getElementById('loading-box').classList.remove("loaded")
+  }
+}
+window.addEventListener('load',()=> { preloader.endLoading() })
+setTimeout(function(){preloader.endLoading();},10000)
+
+if (false) {
+  document.addEventListener('pjax:send', () => { preloader.initLoading() })
+  document.addEventListener('pjax:complete', () => { preloader.endLoading() })
+}</script><link rel="stylesheet" href="/css/progress_bar.css"/><script async="async" src="https://cdn.jsdelivr.net/npm/pace-js/pace.min.js" data-pace-options="{ &quot;restartOnRequestAfter&quot;:false,&quot;eventLag&quot;:false}"></script><div id="web_bg"></div><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img is-center"><img src="https://testingcf.jsdelivr.net/gh/anian80/blogimage//blog/202308121853819.png" onerror="onerror=null;src='/img/friend_404.gif'" alt="avatar"/></div><div class="sidebar-site-data site-data is-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">6</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">8</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">4</div></a></div><hr class="custom-hr"/></div></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header" style="background-image: url('https://unpkg.com/anian80blogimage@latest/img/1695196480752.webp')"><nav id="nav"><span id="blog-info"><a href="/" title="Anian'Blog"><span class="site-name">Anian'Blog</span></a></span><div id="menus"><div id="toggle-menu"><a class="site-page" href="javascript:void(0);"><i class="fas fa-bars fa-fw"></i></a></div></div></nav><div id="post-info"><h1 class="post-title">CSRF漏洞复现</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="fa-fw post-meta-icon far fa-calendar-alt"></i><span class="post-meta-label">发表于</span><time datetime="2023-09-20T13:45:51.000Z" title="发表于 2023-09-20 21:45:51">2023-09-20</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/CSRF%E6%BC%8F%E6%B4%9E/">CSRF漏洞</a></span></div><div class="meta-secondline"></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="post-content" id="article-container"><h1 id="一-CSRF漏洞简介"><a href="#一-CSRF漏洞简介" class="headerlink" title="一. CSRF漏洞简介"></a>一. CSRF漏洞简介</h1><h2 id="01-CSRF漏洞形成原因"><a href="#01-CSRF漏洞形成原因" class="headerlink" title="01.CSRF漏洞形成原因"></a>01.CSRF漏洞形成原因</h2><p>开发源码时候，未对相关页面进行token和referer判断，hacker可以构造自己的url地址欺骗用户进行点击。</p>
+<h2 id="02-CSRF漏洞攻击分类"><a href="#02-CSRF漏洞攻击分类" class="headerlink" title="02.CSRF漏洞攻击分类"></a>02.CSRF漏洞攻击分类</h2><p>🔴站内攻击</p>
+<p>🔵站外攻击</p>
+<h2 id="03-CSRF检测方法"><a href="#03-CSRF检测方法" class="headerlink" title="03.CSRF检测方法"></a>03.CSRF检测方法</h2><p>☕Burp 抓包检测</p>
+<p>☕SRFTester检查工具</p>
+<h2 id="04-如何挖掘CSRF漏洞"><a href="#04-如何挖掘CSRF漏洞" class="headerlink" title="04.如何挖掘CSRF漏洞"></a>04.如何挖掘CSRF漏洞</h2><p>⚙漏洞扫描工具</p>
+<p>📑修改密码的相关页面</p>
+<p>📑添加用户的相关页面</p>
+<p>📊数据库备份的相关页面</p>
+<p>💳数据交易，支付</p>
+<p>🎤一些对话框交互页面</p>
+<h1 id="二-CSRF防御手段"><a href="#二-CSRF防御手段" class="headerlink" title="二.CSRF防御手段"></a>二.CSRF防御手段</h1><ol>
+<li>检验http referer头字段</li>
+<li>添加token值</li>
+<li>白名单</li>
+</ol>
+<h1 id="三-CSRF漏洞复现"><a href="#三-CSRF漏洞复现" class="headerlink" title="三. CSRF漏洞复现"></a>三. CSRF漏洞复现</h1><blockquote>
+<p>靶机:win2003 中间件:Apache&#x2F;2.4.23 Web:Discuz&#x2F;1.5</p>
+<p>攻击机：win10  Burp </p>
+</blockquote>
+<h2 id="01-注册测试账号"><a href="#01-注册测试账号" class="headerlink" title="01.注册测试账号"></a>01.注册测试账号</h2><p>论坛注册一个账号，需要有发帖的权限。</p>
+<p><img src="https://unpkg.com/anian80blogimage@latest/img/1695046443291.webp" alt="注册账号"></p>
+<h2 id="02-构造攻击url"><a href="#02-构造攻击url" class="headerlink" title="02.构造攻击url"></a>02.构造攻击url</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">http://10.0.0.121:90/DZ/upload/uc_server/admin.php?m=db&amp;a=operate&amp;t=export&amp;appid=0&amp;backupdir=xxxx%26backupfilename%3Daaaa</span><br></pre></td></tr></table></figure>
+
+<p>管理用户单击url就会触发Web网站数据库备份，我们构造的url指定了备份数据的目录名称和备份数据名，这样我们就可以按照Web路径访问到备份数据，从而达到我们的目的。</p>
+<h2 id="03-钓鱼攻击"><a href="#03-钓鱼攻击" class="headerlink" title="03.钓鱼攻击"></a>03.钓鱼攻击</h2><p>发帖子，诱导管理员点击我们构造的钓鱼帖子，触发CSRF漏洞。</p>
+<p><img src="https://unpkg.com/anian80blogimage@latest/img/1695047837029.webp" alt="构造钓鱼帖子"></p>
+<h2 id="04-模拟管理用户上钩"><a href="#04-模拟管理用户上钩" class="headerlink" title="04.模拟管理用户上钩"></a>04.模拟管理用户上钩</h2><p>登录管理员用户并且可以打开管理界面，然后点击我们构造的钓鱼帖子。</p>
+<p><img src="https://unpkg.com/anian80blogimage@latest/img/1695048278517.webp" alt="钓鱼帖子"></p>
+<p>Burp抓包分析url</p>
+<p><img src="https://unpkg.com/anian80blogimage@latest/img/1695048438739.webp" alt="触发url"></p>
+<h2 id="05-hacker读取备份文件"><a href="#05-hacker读取备份文件" class="headerlink" title="05.hacker读取备份文件"></a>05.hacker读取备份文件</h2><p><img src="https://unpkg.com/anian80blogimage@latest/img/1695130366852.webp" alt="脱裤"></p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta">文章作者: </span><span class="post-copyright-info"><a href="https://anian80.github.io">追马</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta">文章链接: </span><span class="post-copyright-info"><a href="https://anian80.github.io/posts/f065ee20.html">https://anian80.github.io/posts/f065ee20.html</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta">版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来自 <a href="https://anian80.github.io" target="_blank">Anian'Blog</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/CSRF%E6%BC%8F%E6%B4%9E/">CSRF漏洞</a><a class="post-meta__tags" href="/tags/%E6%BC%8F%E6%B4%9E%E5%A4%8D%E7%8E%B0/">漏洞复现</a></div><div class="post_share"><div class="social-share" data-image="https://unpkg.com/anian80blogimage@latest/img/1695196480752.webp" data-sites="wechat,weibo,qq"></div><link rel="stylesheet" href="https://lib.baomitu.com/social-share.js/1.0.16/css/share.min.css" media="print" onload="this.media='all'"><script src="https://lib.baomitu.com/social-share.js/1.0.16/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><div class="next-post pull-full"><a href="/posts/ebf4ae65.html" title="复现ms17-010内网渗透"><img class="cover" src="https://unpkg.com/anian80blogimage@latest/img/1693486426073.webp" onerror="onerror=null;src='/img/404.jpg'" alt="cover of next post"><div class="pagination-info"><div class="label">下一篇</div><div class="next_info">复现ms17-010内网渗透</div></div></a></div></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info"><div class="is-center"><div class="avatar-img"><img src="https://testingcf.jsdelivr.net/gh/anian80/blogimage//blog/202308121853819.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info__name">追马</div><div class="author-info__description">最强攻击手的成长</div></div><div class="card-info-data site-data is-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">6</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">8</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">4</div></a></div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/anian80"><i class="fab fa-github"></i><span>Follow Me</span></a></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content"><a>如果喜欢本网站，欢迎收藏！<img src="https://unpkg.com/anian80blogimage@latest/img/1693544747849.gif" /></a></div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E4%B8%80-CSRF%E6%BC%8F%E6%B4%9E%E7%AE%80%E4%BB%8B"><span class="toc-number">1.</span> <span class="toc-text">一. CSRF漏洞简介</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#01-CSRF%E6%BC%8F%E6%B4%9E%E5%BD%A2%E6%88%90%E5%8E%9F%E5%9B%A0"><span class="toc-number">1.1.</span> <span class="toc-text">01.CSRF漏洞形成原因</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#02-CSRF%E6%BC%8F%E6%B4%9E%E6%94%BB%E5%87%BB%E5%88%86%E7%B1%BB"><span class="toc-number">1.2.</span> <span class="toc-text">02.CSRF漏洞攻击分类</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#03-CSRF%E6%A3%80%E6%B5%8B%E6%96%B9%E6%B3%95"><span class="toc-number">1.3.</span> <span class="toc-text">03.CSRF检测方法</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#04-%E5%A6%82%E4%BD%95%E6%8C%96%E6%8E%98CSRF%E6%BC%8F%E6%B4%9E"><span class="toc-number">1.4.</span> <span class="toc-text">04.如何挖掘CSRF漏洞</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E4%BA%8C-CSRF%E9%98%B2%E5%BE%A1%E6%89%8B%E6%AE%B5"><span class="toc-number">2.</span> <span class="toc-text">二.CSRF防御手段</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E4%B8%89-CSRF%E6%BC%8F%E6%B4%9E%E5%A4%8D%E7%8E%B0"><span class="toc-number">3.</span> <span class="toc-text">三. CSRF漏洞复现</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#01-%E6%B3%A8%E5%86%8C%E6%B5%8B%E8%AF%95%E8%B4%A6%E5%8F%B7"><span class="toc-number">3.1.</span> <span class="toc-text">01.注册测试账号</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#02-%E6%9E%84%E9%80%A0%E6%94%BB%E5%87%BBurl"><span class="toc-number">3.2.</span> <span class="toc-text">02.构造攻击url</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#03-%E9%92%93%E9%B1%BC%E6%94%BB%E5%87%BB"><span class="toc-number">3.3.</span> <span class="toc-text">03.钓鱼攻击</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#04-%E6%A8%A1%E6%8B%9F%E7%AE%A1%E7%90%86%E7%94%A8%E6%88%B7%E4%B8%8A%E9%92%A9"><span class="toc-number">3.4.</span> <span class="toc-text">04.模拟管理用户上钩</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#05-hacker%E8%AF%BB%E5%8F%96%E5%A4%87%E4%BB%BD%E6%96%87%E4%BB%B6"><span class="toc-number">3.5.</span> <span class="toc-text">05.hacker读取备份文件</span></a></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item"><a class="thumbnail" href="/posts/f065ee20.html" title="CSRF漏洞复现"><img src="https://unpkg.com/anian80blogimage@latest/img/1695196480752.webp" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="CSRF漏洞复现"/></a><div class="content"><a class="title" href="/posts/f065ee20.html" title="CSRF漏洞复现">CSRF漏洞复现</a><time datetime="2023-09-20T13:45:51.000Z" title="发表于 2023-09-20 21:45:51">2023-09-20</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/posts/ebf4ae65.html" title="复现ms17-010内网渗透"><img src="https://unpkg.com/anian80blogimage@latest/img/1693486426073.webp" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="复现ms17-010内网渗透"/></a><div class="content"><a class="title" href="/posts/ebf4ae65.html" title="复现ms17-010内网渗透">复现ms17-010内网渗透</a><time datetime="2023-08-30T16:00:00.000Z" title="发表于 2023-08-31 00:00:00">2023-08-31</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/posts/ac8d96b0.html" title="安全运维简单图解"><img src="https://unpkg.com/anian80blogimage@latest/img/1693541372021.webp" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="安全运维简单图解"/></a><div class="content"><a class="title" href="/posts/ac8d96b0.html" title="安全运维简单图解">安全运维简单图解</a><time datetime="2023-08-14T13:47:40.000Z" title="发表于 2023-08-14 21:47:40">2023-08-14</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/posts/ea226d3d.html" title="安全运维之堡垒机"><img src="https://unpkg.com/anian80blogimage@latest/img/1693541430076.webp" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="安全运维之堡垒机"/></a><div class="content"><a class="title" href="/posts/ea226d3d.html" title="安全运维之堡垒机">安全运维之堡垒机</a><time datetime="2023-08-14T13:47:29.000Z" title="发表于 2023-08-14 21:47:29">2023-08-14</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/posts/1dffccb1.html" title="安全运维之openvpn"><img src="https://unpkg.com/anian80blogimage@latest/img/1693541430076.webp" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="安全运维之openvpn"/></a><div class="content"><a class="title" href="/posts/1dffccb1.html" title="安全运维之openvpn">安全运维之openvpn</a><time datetime="2023-08-14T13:47:20.000Z" title="发表于 2023-08-14 21:47:20">2023-08-14</time></div></div></div></div></div></div></main><footer id="footer" style="background: transparent"><div id="footer-wrap"><div class="copyright">&copy;2020 - 2023 By 追马</div><div class="framework-info"><span>框架 </span><a target="_blank" rel="noopener" href="https://hexo.io">Hexo</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly</a></div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js"></script><script src="/js/main.js"></script><script src="https://cdn.jsdelivr.net/npm/@fancyapps/ui/dist/fancybox/fancybox.umd.min.js"></script><script src="https://cdn.jsdelivr.net/npm/instant.page/instantpage.min.js" type="module"></script><div class="js-pjax"></div><script id="click-heart" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc/dist/click-heart.min.js" async="async" mobile="false"></script></div></body></html>
